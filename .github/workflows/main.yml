@@ -14,22 +14,45 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Unzip Project Files
+      - name: Download Headless Godot Engine
         run: |
-          unzip *.zip -d .
-          # If files extracted into a subfolder, bring them to the root
-          TARGET_DIR=$(find . -name "project.godot" -exec dirname {} \;)
-          if [ "$TARGET_DIR" != "." ]; then
-            cp -RL "$TARGET_DIR"/* . || true
+          curl -L -o godot.zip https://github.com
+          unzip godot.zip
+          mv Godot_v4.3-stable_linux.x86_64 godot
+          chmod +x godot
+          rm godot.zip
+
+      - name: Download and Manual Patch Export Templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          curl -L -o templates.tpz https://github.com
+          unzip templates.tpz -d templates_extracted
+          mv templates_extracted/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          rm -rf templates.tpz templates_extracted
+
+      - name: Unzip & Flawless Content Alignment
+        run: |
+          unzip *.zip -d extracted_temp
+          TARGET_PATH=$(find extracted_temp -name "project.godot" -print -quit)
+          TARGET_DIR=$(dirname "$TARGET_PATH")
+          if [ -d "$TARGET_DIR" ]; then
+            cp -RL "$TARGET_DIR"/* .
+          else
+            cp -RL extracted_temp/* . || true
           fi
+          rm -rf extracted_temp
           mkdir -p build/android
 
-      - name: Generate Security Keys
+      - name: Generate Temporary Android Debug Keystore
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 365
 
-      - name: Configure Build Settings
+      - name: Configure Local Godot System Files
         run: |
+          mkdir -p ~/.config/godot
+          echo '[settings]' > ~/.config/godot/editor_settings-4.tres
+          echo 'export/android/android_sdk_path = "'"$ANDROID_HOME"'"' >> ~/.config/godot/editor_settings-4.tres
+          
           echo '[preset.0]' > export_presets.cfg
           echo 'name="Android"' >> export_presets.cfg
           echo 'platform="Android"' >> export_presets.cfg
@@ -41,13 +64,8 @@ jobs:
           echo 'keystore/debug_user="androiddebugkey"' >> export_presets.cfg
           echo 'keystore/debug_password="android"' >> export_presets.cfg
 
-      - name: Automated Godot Export Action
-        uses: firebelley/godot-export@v6.0.0
-        with:
-          godot_version: 4.3
-          export_preset: Android
-          export_path: build/android/CyberBunny.apk
-          generate_release_notes: false
+      - name: Absolute Final Direct APK Compilation Task
+        run: ./godot --headless --export-release "Android" build/android/CyberBunny.apk
 
       - name: Upload Finished APK Asset
         uses: actions/upload-artifact@v4
