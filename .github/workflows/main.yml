@@ -1,0 +1,42 @@
+name: Mobile APK Cloud Builder
+on: [push, workflow_dispatch]
+
+jobs:
+  export-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Unzip Project Files
+        run: unzip cyper_bunny_2026-06-28_05-07-29.zip -d .
+
+      - name: Download Godot Engine
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+
+      - name: Force Export Configuration
+        run: |
+          echo '[preset.0]' > export_presets.cfg
+          echo 'name="Android"' >> export_presets.cfg
+          echo 'platform="Android"' >> export_presets.cfg
+          echo 'runnable=true' >> export_presets.cfg
+          echo 'custom_features=""' >> export_presets.cfg
+          echo 'export_filter="all_resources"' >> export_presets.cfg
+          echo 'include_filter=""' >> export_presets.cfg
+          echo 'exclude_filter=""' >> export_presets.cfg
+          echo 'export_path="build/android/CyberBunny.apk"' >> export_presets.cfg
+          echo '[preset.0.options]' >> export_presets.cfg
+
+      - name: Build Packaging
+        run: |
+          mkdir -p build/android
+          godot --headless --export-release "Android"
+
+      - name: Upload Finished APK Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: CyberBunny-Mobile-Build
+          path: build/android/CyberBunny.apk
