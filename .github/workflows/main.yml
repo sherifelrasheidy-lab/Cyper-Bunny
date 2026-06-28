@@ -28,18 +28,18 @@ jobs:
           mv templates_extracted/templates/* ~/.local/share/godot/export_templates/4.3.stable/
           rm -rf templates.tpz templates_extracted
 
-      - name: Extract Project Files & Identify Root Directory
+      - name: Unzip & Flatten Project Structure to Root
         run: |
-          unzip cyper_bunny_2026-06-28_05-07-29.zip -d extracted_project
-          # Find the directory containing project.godot
-          PROJECT_DIR=$(find . -name "project.godot" -exec dirname {} \;)
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          unzip cyper_bunny_2026-06-28_05-07-29.zip -d extracted_temp
+          # Find where project.godot lives, and move all files from that folder straight to the root workspace
+          TARGET_DIR=$(find extracted_temp -name "project.godot" -exec dirname {} \;)
+          mv $TARGET_DIR/* .
+          rm -rf extracted_temp
           mkdir -p build/android
 
       - name: Generate Temporary Android Debug Keystore
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 365
-          mv debug.keystore ${{ env.PROJECT_DIR }}/
 
       - name: Configure Godot Engine Android Parameters
         run: |
@@ -47,22 +47,19 @@ jobs:
           echo '[settings]' > ~/.config/godot/editor_settings-4.tres
           echo 'export/android/android_sdk_path = "'"$ANDROID_HOME"'"' >> ~/.config/godot/editor_settings-4.tres
           
-          cd ${{ env.PROJECT_DIR }}
           echo '[preset.0]' > export_presets.cfg
           echo 'name="Android"' >> export_presets.cfg
           echo 'platform="Android"' >> export_presets.cfg
           echo 'runnable=true' >> export_presets.cfg
           echo 'export_filter="all_resources"' >> export_presets.cfg
-          echo 'export_path="../../build/android/CyberBunny.apk"' >> export_presets.cfg
+          echo 'export_path="build/android/CyberBunny.apk"' >> export_presets.cfg
           echo '[preset.0.options]' >> export_presets.cfg
           echo 'keystore/debug="res://debug.keystore"' >> export_presets.cfg
           echo 'keystore/debug_user="androiddebugkey"' >> export_presets.cfg
           echo 'keystore/debug_password="android"' >> export_presets.cfg
 
       - name: Execute Android APK Production Build
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          godot --headless --export-release "Android"
+        run: godot --headless --export-release "Android" build/android/CyberBunny.apk
 
       - name: Upload Finished APK Asset
         uses: actions/upload-artifact@v4
