@@ -28,18 +28,18 @@ jobs:
           mv templates_extracted/templates/* ~/.local/share/godot/export_templates/4.3.stable/
           rm -rf templates.tpz templates_extracted
 
-      - name: Unzip & Extract Project File to Root Safely
+      - name: Unzip & Extract Project File via Wildcard
         run: |
-          unzip cyper_bunny_2026-06-28_05-07-29.zip -d extracted_temp
-          # Locate the project file safely and handle paths with quotes
+          # Use *.zip so it automatically matches your file regardless of text typos
+          unzip *.zip -d extracted_temp
           TARGET_PATH=$(find extracted_temp -name "project.godot" -print -quit)
           TARGET_DIR=$(dirname "$TARGET_PATH")
           
           if [ -d "$TARGET_DIR" ]; then
-            echo "Found project files in: $TARGET_DIR"
+            echo "Extracting from project directory: $TARGET_DIR"
             cp -RL "$TARGET_DIR"/* .
           else
-            echo "Warning: project.godot not found in subdirectories, copying root files."
+            echo "Copying from root folder directly."
             cp -RL extracted_temp/* . || true
           fi
           rm -rf extracted_temp
