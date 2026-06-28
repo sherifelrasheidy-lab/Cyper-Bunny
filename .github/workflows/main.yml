@@ -8,20 +8,37 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Setup Godot Engine
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.3.0
           use-dotnet: false
 
-      - name: Unzip and Setup Project
+      - name: Download and Install Export Templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          curl -L -o templates.tpz https://github.com
+          unzip templates.tpz -d templates_extracted
+          mv templates_extracted/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          rm -rf templates.tpz templates_extracted
+
+      - name: Unzip Project Files
         run: |
           unzip cyper_bunny_2026-06-28_05-07-29.zip -d .
           mkdir -p build/android
-          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
 
-      - name: Force Export Profiles
+      - name: Configure Godot Android SDK Paths
         run: |
+          mkdir -p ~/.config/godot
+          echo '[settings]' > ~/.config/godot/editor_settings-4.tres
+          echo 'export/android/android_sdk_path = "'"$ANDROID_HOME"'"' >> ~/.config/godot/editor_settings-4.tres
+          
           echo '[preset.0]' > export_presets.cfg
           echo 'name="Android"' >> export_presets.cfg
           echo 'platform="Android"' >> export_presets.cfg
@@ -29,8 +46,6 @@ jobs:
           echo 'export_filter="all_resources"' >> export_presets.cfg
           echo 'export_path="build/android/CyberBunny.apk"' >> export_presets.cfg
           echo '[preset.0.options]' >> export_presets.cfg
-          echo 'architectures/arm64-v8a=true' >> export_presets.cfg
-          echo 'architectures/armeabi-v7a=true' >> export_presets.cfg
 
       - name: Build Packaging
         run: godot --headless --export-release "Android" build/android/CyberBunny.apk
