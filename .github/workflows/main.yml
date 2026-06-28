@@ -28,12 +28,20 @@ jobs:
           mv templates_extracted/templates/* ~/.local/share/godot/export_templates/4.3.stable/
           rm -rf templates.tpz templates_extracted
 
-      - name: Unzip & Flatten Project Structure to Root
+      - name: Unzip & Extract Project File to Root Safely
         run: |
           unzip cyper_bunny_2026-06-28_05-07-29.zip -d extracted_temp
-          # Find where project.godot lives, and move all files from that folder straight to the root workspace
-          TARGET_DIR=$(find extracted_temp -name "project.godot" -exec dirname {} \;)
-          mv $TARGET_DIR/* .
+          # Locate the project file safely and handle paths with quotes
+          TARGET_PATH=$(find extracted_temp -name "project.godot" -print -quit)
+          TARGET_DIR=$(dirname "$TARGET_PATH")
+          
+          if [ -d "$TARGET_DIR" ]; then
+            echo "Found project files in: $TARGET_DIR"
+            cp -RL "$TARGET_DIR"/* .
+          else
+            echo "Warning: project.godot not found in subdirectories, copying root files."
+            cp -RL extracted_temp/* . || true
+          fi
           rm -rf extracted_temp
           mkdir -p build/android
 
